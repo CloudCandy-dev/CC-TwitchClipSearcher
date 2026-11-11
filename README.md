@@ -2,6 +2,12 @@
 
 Twitch のクリップを期間を指定して探せるブラウザアプリです。サーバーは不要で、静的ファイルだけで動きます。
 
+## 使い方
+
+1. [CC-TwitchClipSearcher](https://cloud-candy.cc/CC-TwitchClipSearcher) にアクセス
+2. 「Twitchでログイン」からログイン
+3. 検索したい配信者のIDを入力し検索
+
 ## 機能
 
 - チャンネルと期間（7日 / 30日 / 今年 / 昨年 / 全期間 / 日付指定）でクリップを検索
@@ -11,14 +17,6 @@ Twitch のクリップを期間を指定して探せるブラウザアプリで�
 - ページ内でクリップを再生
 - ライト / ダーク対応、配信者のチャットの色に合わせた配色
 
-## 使い方
-
-1. [Twitch Developer Console](https://dev.twitch.tv/console/apps) でアプリを作成し、OAuth Redirect URLs に `http://localhost:8000` を追加
-2. `js/config.js` の `clientId` を自分の Client ID に変更
-3. `start.bat` を実行（Python が必要）
-4. 「Twitchでログイン」からログイン
-
-`index.html` を直接開いても動きません。別の URL で公開する場合は、その URL も Redirect URLs に追加してください。
 
 ## ファイル構成
 
