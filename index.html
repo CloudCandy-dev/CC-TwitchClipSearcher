@@ -1,0 +1,268 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Clip Searcher</title>
+  <meta name="color-scheme" content="light dark">
+  <script>
+    // 保存済みテーマを描画前に反映（ちらつき防止）
+    try { const t = localStorage.getItem('tcs_theme'); if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t; } catch {}
+    // 最初のアニメーションまで隠しておく（読み込めなくても 1.5 秒で表示）
+    document.documentElement.classList.add('motion-pending');
+    setTimeout(() => document.documentElement.classList.remove('motion-pending'), 1500);
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600&family=Zen+Kaku+Gothic+New:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap">
+  <link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="./">
+      <svg class="brand-mark i" viewBox="0 0 24 24" aria-hidden="true"><rect x="2.5" y="5" width="19" height="14" rx="3"/><path class="i-fill" d="M10 9.5v5l4.5-2.5z"/><path d="M7 2.5h3M14 2.5h3"/></svg>
+      <span>Clip Searcher</span>
+    </a>
+    <div class="topbar-right">
+      <div class="theme-switch" role="radiogroup" aria-label="表示テーマ">
+        <button type="button" role="radio" data-theme-value="auto" title="端末の設定に合わせる" aria-label="自動">
+          <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path class="i-fill" d="M12 3a9 9 0 0 1 0 18z"/></svg>
+        </button>
+        <button type="button" role="radio" data-theme-value="light" title="ライト" aria-label="ライト">
+          <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+        </button>
+        <button type="button" role="radio" data-theme-value="dark" title="ダーク" aria-label="ダーク">
+          <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9z"/></svg>
+        </button>
+      </div>
+      <div class="auth">
+        <span id="auth-user" class="user-chip" hidden>
+          <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          <span id="auth-login"></span>
+        </span>
+        <button type="button" id="why-login-header" class="why-btn" data-why-login hidden>
+          <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3M12 17h.01"/></svg>
+          <span>なぜログインが必要？</span>
+        </button>
+        <button type="button" id="login-btn" class="btn btn-ghost btn-sm" hidden>Twitchでログイン</button>
+        <button type="button" id="logout-btn" class="btn btn-ghost btn-sm" hidden>ログアウト</button>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <form id="fetch-form" class="search">
+      <div class="banner" id="banner">
+        <img id="banner-img" class="banner-img" alt="" hidden>
+        <label class="channel-field">
+          <span class="visually-hidden">チャンネルID</span>
+          <span class="channel-prefix" aria-hidden="true">twitch.tv/</span>
+          <input id="channel" required autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="チャンネルID">
+        </label>
+        <div class="banner-body">
+          <div class="banner-channel" id="banner-channel" hidden>
+            <a id="channel-avatar-link" class="channel-avatar-link" target="_blank" rel="noopener" tabindex="-1" aria-hidden="true">
+              <img id="channel-avatar" class="channel-avatar" alt="" width="64" height="64">
+            </a>
+            <div class="banner-text">
+              <h2 class="channel-name">
+                <a id="channel-name-link" target="_blank" rel="noopener" title="Twitch でチャンネルを開く">
+                  <span id="channel-name"></span>
+                  <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 3h6v6M10 14 21 3M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg>
+                </a>
+              </h2>
+              <p id="channel-meta" class="channel-meta"></p>
+            </div>
+          </div>
+          <div class="banner-intro" id="banner-intro">
+            <div class="intro-actions" id="intro-actions" hidden>
+              <button type="button" class="why-btn why-btn-light" data-why-login>
+                <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3M12 17h.01"/></svg>
+                なぜログインが必要？
+              </button>
+              <button type="button" id="welcome-login" class="btn btn-light btn-lg">Twitchでログイン</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="controls">
+        <div class="segmented" role="radiogroup" aria-label="期間" id="preset">
+          <button type="button" role="radio" data-value="7d">7日</button>
+          <button type="button" role="radio" data-value="30d">30日</button>
+          <button type="button" role="radio" data-value="this-year">今年</button>
+          <button type="button" role="radio" data-value="last-year">昨年</button>
+          <button type="button" role="radio" data-value="all">全期間</button>
+          <button type="button" role="radio" data-value="custom">日付指定</button>
+        </div>
+        <div class="date-range" id="date-range" hidden>
+          <input type="date" id="from" aria-label="開始日">
+          <span aria-hidden="true">〜</span>
+          <input type="date" id="to" aria-label="終了日">
+        </div>
+        <div class="controls-end">
+          <button type="button" id="advanced-toggle" class="btn btn-ghost btn-md" aria-expanded="false" aria-controls="advanced">
+            <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 4h-7M10 4H3M21 12h-9M8 12H3M21 20h-5M12 20H3M14 2v4M8 10v4M16 18v4"/></svg>
+            詳細
+          </button>
+          <button type="submit" id="fetch-btn" class="btn btn-primary btn-md">
+            <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+            検索
+          </button>
+          <button type="button" id="cancel-btn" class="btn btn-ghost btn-md" hidden>中止</button>
+        </div>
+      </div>
+
+      <div class="panel" id="advanced" hidden>
+        <div class="panel-row">
+          <span class="panel-label" id="mode-label">取得方法</span>
+          <div class="segmented segmented-sm" role="radiogroup" aria-labelledby="mode-label" id="mode">
+            <button type="button" role="radio" data-value="top">人気順</button>
+            <button type="button" role="radio" data-value="all">すべて</button>
+          </div>
+          <p class="panel-hint" id="mode-hint"></p>
+        </div>
+        <div class="panel-row" id="min-views-row" hidden>
+          <label class="panel-label" for="fetch-min-views">取得する再生数</label>
+          <span class="inline-field"><input type="number" id="fetch-min-views" min="0" value="0" inputmode="numeric"> 回以上</span>
+          <p class="panel-hint">下限を上げると、再生の少ないクリップを取りに行かないぶん速くなります</p>
+        </div>
+      </div>
+
+      <div class="status" id="status" hidden>
+        <div class="status-bar"><div class="status-bar-fill" id="progress-fill"></div></div>
+        <p id="progress" class="status-text" aria-live="polite"></p>
+      </div>
+      <p id="error" class="error" role="alert" hidden></p>
+    </form>
+
+    <section id="results" class="results" hidden>
+      <div class="timeline" id="timeline">
+        <div class="timeline-head">
+          <p id="timeline-readout" class="timeline-readout"></p>
+          <button type="button" id="timeline-clear" class="btn btn-ghost btn-sm timeline-clear" hidden>
+            <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+            期間の絞り込みを解除
+          </button>
+        </div>
+        <div class="timeline-scroll">
+          <div class="timeline-bars" id="timeline-bars" role="group" aria-label="期間ごとのクリップ数"></div>
+        </div>
+      </div>
+
+      <div class="toolbar-wrap">
+        <div class="toolbar">
+          <div class="query">
+            <div class="query-field" role="radiogroup" aria-label="絞り込む対象" id="q-field">
+              <button type="button" role="radio" data-value="title">タイトル</button>
+              <button type="button" role="radio" data-value="creator">作成者</button>
+            </div>
+            <label class="query-input">
+              <span class="visually-hidden">キーワード</span>
+              <input id="q" type="search" placeholder="タイトルで絞り込み">
+            </label>
+          </div>
+          <label class="select-field">
+            <span class="visually-hidden">並び順</span>
+            <select id="sort"></select>
+          </label>
+          <button type="button" id="filter-toggle" class="btn btn-ghost btn-md" aria-expanded="false" aria-controls="filter-panel">
+            <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 3H2l8 9.46V19l4 2v-8.54z"/></svg>
+            詳細<span class="badge" id="filter-badge" hidden></span>
+          </button>
+        </div>
+        <div class="panel" id="filter-panel" hidden>
+          <div class="panel-row">
+            <label class="panel-label" for="game">カテゴリ</label>
+            <select id="game"><option value="">すべて</option></select>
+          </div>
+          <div class="panel-row">
+            <label class="panel-label" for="min-views">再生数</label>
+            <span class="inline-field"><input type="number" id="min-views" min="0" value="0" inputmode="numeric"> 回以上</span>
+          </div>
+          <div class="panel-row">
+            <span class="panel-label">注目クリップ</span>
+            <label class="toggle">
+              <input type="checkbox" id="featured">
+              <span class="toggle-track" aria-hidden="true"></span>
+              注目クリップだけ表示
+            </label>
+          </div>
+          <div class="panel-foot">
+            <button type="button" id="filter-reset" class="link-btn">条件をクリア</button>
+          </div>
+        </div>
+      </div>
+
+      <p id="summary" class="summary"></p>
+      <ul id="clip-list" class="clip-grid"></ul>
+      <p class="empty" id="empty" hidden>条件に合うクリップはありません。絞り込みをゆるめてください。</p>
+      <div class="more">
+        <button type="button" id="more-btn" class="btn btn-ghost btn-lg" hidden>さらに表示</button>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <p>&copy; 2026 <a href="https://cloudcandy-dev.github.io/CC-CloudCandy/" target="_blank" rel="noopener">CloudCandy</a>. All rights reserved.</p>
+  </footer>
+
+  <dialog id="player" class="player" aria-labelledby="player-title">
+    <div class="player-frame-wrap">
+      <iframe id="player-frame" title="クリップ再生" allowfullscreen></iframe>
+    </div>
+    <div class="player-info">
+      <div class="player-text">
+        <h3 id="player-title" class="player-title"></h3>
+        <p id="player-meta" class="player-meta"></p>
+      </div>
+      <div class="player-actions">
+        <a id="player-link" class="btn btn-ghost btn-sm" target="_blank" rel="noopener">Twitchで開く</a>
+        <button type="button" id="player-close" class="btn btn-primary btn-sm">閉じる</button>
+      </div>
+    </div>
+  </dialog>
+
+  <dialog id="why-login" class="sheet" aria-labelledby="why-login-title">
+    <div class="sheet-body">
+      <div class="sheet-icon" aria-hidden="true">
+        <svg class="i" viewBox="0 0 24 24"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg>
+      </div>
+      <h2 id="why-login-title" class="sheet-title">なぜ Twitch へのログインが必要なの？</h2>
+      <p class="sheet-lead">
+        クリップの一覧は Twitch の公式 API から取得しています。この API は、公開されているクリップを読むだけでも、ログインして発行される「アクセストークン」がないと使えない決まりになっています。そのため、検索の前にログインをお願いしています。
+      </p>
+      <ul class="sheet-list">
+        <li>
+          <strong>ログインは Twitch 公式の画面で行います</strong>
+          <span>ボタンを押すと Twitch のログインページ（id.twitch.tv）に移動します。アドレスバーで確認できます。パスワードをこのサイトに入力することはなく、このサイトに届くこともありません。</span>
+        </li>
+        <li>
+          <strong>読み取り以外の権限は求めません</strong>
+          <span>求める権限はゼロです。チャットの送信、フォロー、配信設定の変更、メールアドレスなど個人情報の閲覧はできません。使うのは、誰でも見られるクリップとチャンネルの情報だけです。</span>
+        </li>
+        <li>
+          <strong>トークンはこのブラウザの中だけに保存されます</strong>
+          <span>このサイトにはTwitch以外へのサーバー通信がありません。トークンはお使いのブラウザに保存され、Twitch の API に問い合わせるとき以外には送信されません。</span>
+        </li>
+        <li>
+          <strong>いつでも連携を解除できます</strong>
+          <span>「ログアウト」を押すとトークンは無効になります。Twitch の「設定 → 接続」からも、いつでも連携を解除できます。</span>
+        </li>
+        <li>
+          <strong>ソースコードを公開しています</strong>
+          <span>このプロジェクトは OSS として公開しており、どなたでもソースコードを確認していただけます。ログインの処理やトークンの扱いも、実際のコードでご確認ください。<a class="sheet-link" href="https://github.com/CloudCandy-dev" target="_blank" rel="noopener">github.com/CloudCandy-dev</a></span>
+        </li>
+      </ul>
+    </div>
+    <div class="sheet-actions">
+      <button type="button" class="btn btn-ghost btn-md" data-close>閉じる</button>
+      <button type="button" id="why-login-go" class="btn btn-primary btn-md" hidden>Twitchでログイン</button>
+    </div>
+  </dialog>
+
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/gsap.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/ScrollTrigger.min.js"></script>
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
